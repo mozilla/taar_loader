@@ -1,0 +1,5 @@
+data
+*pyc
+build
+dist
+*egg-info
