@@ -12,6 +12,9 @@ from datetime import timedelta
 
 import taar_loader
 
+from pyspark import SparkConf
+from pyspark.sql import SparkSession
+
 
 def parse_args():
     def valid_date_type(arg_date_str):
@@ -41,4 +44,8 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    taar_loader.runme(args.run_date)
+    APP_NAME = "HBaseAddonRecommenderView"
+    conf = SparkConf().setAppName(APP_NAME)
+    conf = conf.setMaster("local[*]")
+    spark = SparkSession.builder.config(conf=conf).getOrCreate()
+    taar_loader.main(spark, args.run_date)

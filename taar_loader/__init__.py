@@ -1,2 +1,2 @@
-from taar_dynamo import runme
-from filters import dynamo_reducer
+from .taar_dynamo import main
+from .filters import dynamo_reducer

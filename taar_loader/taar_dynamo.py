@@ -8,8 +8,6 @@ This module replicates the scala script over at
 https://github.com/mozilla/telemetry-batch-view/blob/1c544f65ad2852703883fe31a9fba38c39e75698/src/main/scala/com/mozilla/telemetry/views/HBaseAddonRecommenderView.scala
 """
 
-from pyspark import SparkConf
-from pyspark.sql import SparkSession
 from pyspark.sql.functions import desc, row_number
 from pyspark.sql import Window
 
@@ -23,10 +21,7 @@ def etl(spark, run_date, dataFrameFunc):
     print("Processing %s" % currentDateString)
 
     # Get the data for the desired date out of the dataframe
-    tmp = dataFrameFunc(currentDateString)
-
-    # TODO: Remove downsampling later
-    datasetForDate = tmp.sample(False, 0.00000001)
+    datasetForDate = dataFrameFunc(currentDateString)
 
     print("Dataset is sampled!")
 
@@ -124,11 +119,3 @@ def reducer(tuple_a, tuple_b):
         tuple_data = tuple(tuple_data)
 
     return tuple_data
-
-
-def runme(run_date):
-    APP_NAME = "HBaseAddonRecommenderView"
-    conf = SparkConf().setAppName(APP_NAME)
-    conf = conf.setMaster("local[*]")
-    sparkSession = SparkSession.builder.config(conf=conf).getOrCreate()
-    return main(sparkSession, run_date)
