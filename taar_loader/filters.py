@@ -1,6 +1,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+import boto3
 
 
 def filterDateAndClientID(row_jstr):
@@ -10,7 +11,7 @@ def filterDateAndClientID(row_jstr):
         assert row.client_id is not None
         dateutil.parser.parse(row.subsession_start_date)
         return True
-    except Exception as inst:
+    except Exception:
         return False
 
 
@@ -35,33 +36,40 @@ def list_transformer(row_jsonstr):
     return (0, 1, [jdata])
 
 
-def boto3_tuple_reducer(tuple_a, tuple_b):
-
-    if tuple_a[1] == 0:
-        return tuple_b
-    if tuple_b[1] == 0:
-        return tuple_a
-
-    # Both tuples have non-zero length lists, merge them
-
-    working_tuple = [tuple_a[0] + tuple_b[0],
-                     tuple_a[1] + tuple_b[1],
-                     tuple_a[2] + tuple_b[2]]
-
-    if working_tuple[1] >= 3:
-        push_to_dynamo(working_tuple[2])
-        working_tuple[0] += working_tuple[1]
-        working_tuple[1] = 0
-        working_tuple[2] = []
-
-    return tuple(working_tuple)
-
-
-def push_to_dynamo(json_list):
-    import boto3
+def push_to_dynamo(item_list):
+    """
+    This connects to DynamoDB and pushes records in `item_list` into
+    a table.
+    """
     conn = boto3.resource('dynamodb', region_name='us-west-2')
     table = conn.Table('taar_addon_data')
-
     with table.batch_writer(overwrite_by_pkeys=['client_id']) as batch:
-        for item in json_list:
+        for item in item_list:
             batch.put_item(Item=item)
+
+
+def dynamo_reducer(list_a, list_b):
+
+    # If one list is empty, just return the other list
+    if list_a[1] == 0:
+        return list_b
+    if list_b[1] == 0:
+        return list_a
+
+    new_list = [list_a[0] + list_b[0],
+                list_a[1] + list_b[1],
+                list_a[2] + list_b[2]]
+
+    if new_list[1] > 100:
+        push_to_dynamo(new_list[2])
+
+        # Update number of records written to dynamo
+        new_list[0] += new_list[1]
+
+        # Zero out the number of accumulated records
+        new_list[1] = 0
+
+        # Clear out the accumulated JSON records
+        new_list[2] = []
+
+    return tuple(new_list)

@@ -10,7 +10,7 @@ from datetime import date
 from datetime import datetime
 from datetime import timedelta
 
-from taar_loader import runme
+import taar_loader
 
 
 def parse_args():
@@ -41,4 +41,4 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    runme(args.run_date)
+    taar_loader.runme(args.run_date)

@@ -13,7 +13,8 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import desc, row_number
 from pyspark.sql import Window
 
-from taar_loader.filters import filterDateAndClientID, list_transformer
+from taar_loader.filters import filterDateAndClientID
+from taar_loader.filters import list_transformer
 
 
 def etl(spark, run_date, dataFrameFunc):
@@ -91,7 +92,8 @@ def main(spark, run_date):
     def load_parquet(dateString):
         return spark.read.parquet(template % dateString)
 
-    return etl(spark, run_date, load_parquet)
+    rdd = etl(spark, run_date, load_parquet)
+    return rdd
 
 
 def reducer(tuple_a, tuple_b):
