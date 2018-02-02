@@ -17,12 +17,20 @@ from taar_loader.filters import dynamo_reducer
 
 
 def etl(spark, run_date):
+    """
+    This function is responsible for extract, transform and load.
+
+    Data is extracted from Parquet files in Amazon S3.
+    Transforms and filters are applied to the data to create
+    3-tuples that are easily merged in a map-reduce fashion.
+
+    The 3-tuples are then loaded into DynamoDB using a map-reduce
+    operation in Spark.
+    """
     currentDate = run_date
     currentDateString = currentDate.strftime("%Y%m%d")
     print("Processing %s" % currentDateString)
 
-
-    print("Dataset is sampled!")
     # Get the data for the desired date out of parquet
     template = "s3://telemetry-parquet/main_summary/v4/submission_date_s3=%s"
     datasetForDate = spark.read.parquet(template % currentDateString)
@@ -56,7 +64,6 @@ def etl(spark, run_date):
 
     # Join the two tables: only the elements in both dataframes
     # will make it through.
-
     clientsData = dataSubset.join(clientShortList,
                                   ["client_id",
                                    'subsession_start_date'])
