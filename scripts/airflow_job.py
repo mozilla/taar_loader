@@ -10,7 +10,7 @@ from datetime import date
 from datetime import datetime
 from datetime import timedelta
 
-import taar_loader
+from pprint import pprint
 
 from pyspark import SparkConf
 from pyspark.sql import SparkSession
@@ -42,10 +42,21 @@ def parse_args():
     return args
 
 
-if __name__ == "__main__":
+def main():
     args = parse_args()
     APP_NAME = "HBaseAddonRecommenderView"
     conf = SparkConf().setAppName(APP_NAME)
     conf = conf.setMaster("local[*]")
     spark = SparkSession.builder.config(conf=conf).getOrCreate()
-    taar_loader.main(spark, args.run_date)
+    spark.sparkContext.addPyFile("boto3-1.5.22-py2.py3-none-any.whl")
+    spark.sparkContext.addPyFile("taar_loader-1.0-py3.5.egg")
+    import taar_loader
+    import taar_loader.filters
+    print(taar_loader)
+    print(taar_loader.filters)
+    rdd = taar_loader.main(spark, args.run_date)
+    reduced_rdd = rdd.reduce(taar_loader.filters.dynamo_reducer)
+    pprint(reduced_rdd)
+
+if __name__ == '__main__':
+    main()
