@@ -1,12 +1,21 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+import dateutil.parser
+import json
+
 import boto3
 
 
+MAX_RECORDS = 50
+
+
 def filterDateAndClientID(row_jstr):
+    """
+    Filter out any rows where the client_id is None or where the
+    subsession_start_date is not a valid date
+    """
     (row, jstr) = row_jstr
-    import dateutil.parser
     try:
         assert row.client_id is not None
         dateutil.parser.parse(row.subsession_start_date)
@@ -16,11 +25,21 @@ def filterDateAndClientID(row_jstr):
 
 
 def list_transformer(row_jsonstr):
+    """
+    We need to merge two elements of the row data - namely the
+    client_id and the start_date into the main JSON blob.
+
+    This is then packaged into a 3-tuple of :
+
+    The first integer represents the number of records that have been
+    pushed into DynamoDB.
+
+    The second is the length of the JSON data list. This prevents us
+    from having to compute the length of the JSON list unnecessarily.
+
+    The last element of the tuple is the list of JSON data.
+    """
     (row, json_str) = row_jsonstr
-    """ Run mimimal verification that the clientId and startDate is not
-    null"""
-    import json
-    import dateutil.parser
     client_id = row.client_id
     start_date = dateutil.parser.parse(row.subsession_start_date)
     start_date = start_date.date()
@@ -48,19 +67,18 @@ def push_to_dynamo(item_list):
             batch.put_item(Item=item)
 
 
-def dynamo_reducer(list_a, list_b):
-
-    # If one list is empty, just return the other list
-    if list_a[1] == 0:
-        return list_b
-    if list_b[1] == 0:
-        return list_a
-
+def dynamo_reducer(list_a, list_b, force_write=False):
+    """
+    This function can be used to reduce tuples of the form in
+    `list_transformer`. Data is merged and when MAX_RECORDS
+    number of JSON blobs are merged, the list of JSON is batch written
+    into DynamoDB.
+    """
     new_list = [list_a[0] + list_b[0],
                 list_a[1] + list_b[1],
                 list_a[2] + list_b[2]]
 
-    if new_list[1] > 100:
+    if new_list[1] >= MAX_RECORDS or force_write:
         push_to_dynamo(new_list[2])
 
         # Update number of records written to dynamo
