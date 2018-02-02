@@ -48,7 +48,6 @@ def main():
     conf = SparkConf().setAppName(APP_NAME)
     conf = conf.setMaster("local[*]")
     spark = SparkSession.builder.config(conf=conf).getOrCreate()
-    spark.sparkContext.addPyFile("boto3-1.5.22-py2.py3-none-any.whl")
     spark.sparkContext.addPyFile("taar_loader-1.0-py3.5.egg")
     import taar_loader
     import taar_loader.filters
