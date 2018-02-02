@@ -18,6 +18,7 @@ def filterDateAndClientID(row_jstr):
     (row, jstr) = row_jstr
     try:
         assert row.client_id is not None
+        assert row.client_id != ""
         dateutil.parser.parse(row.subsession_start_date)
         return True
     except Exception:
@@ -47,6 +48,9 @@ def list_transformer(row_jsonstr):
     jdata = json.loads(json_str)
     jdata['client_id'] = client_id
     jdata['start_date'] = start_date
+
+    # Filter out keys with an empty value
+    jdata = {key: value for key, value in jdata.items() if value}
 
     # We need to return a 3-tuple of values
     # (numrec_dynamodb_pushed, json_list_length, json_list)
