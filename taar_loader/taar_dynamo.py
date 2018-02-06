@@ -16,6 +16,9 @@ from taar_loader.filters import list_transformer
 from taar_loader.filters import dynamo_reducer
 
 
+EMPTY_TUPLE = (0, 0, [], [])
+
+
 def etl(spark, run_date):
     """
     This function is responsible for extract, transform and load.
@@ -33,7 +36,8 @@ def etl(spark, run_date):
 
     # Get the data for the desired date out of parquet
     template = "s3://telemetry-parquet/main_summary/v4/submission_date_s3=%s"
-    datasetForDate = spark.read.parquet(template % currentDateString)
+    raw_data = spark.read.parquet(template % currentDateString)
+    datasetForDate = raw_data  # .sample(False, 0.00000001)
 
     # Get the most recent (client_id, subsession_start_date) tuple
     # for each client since the main_summary might contain
@@ -88,7 +92,7 @@ def etl(spark, run_date):
     # Filter out any records with invalid dates or client_id
     filtered_rdd = rdd.filter(filterDateAndClientID)
 
-    # Transform the JSON elements into a 3-tuple as per docstring
+    # Transform the JSON elements into a 4-tuple as per docstring
     merged_filtered_rdd = filtered_rdd.map(list_transformer)
 
     # Apply a MapReduce operation to the RDD
@@ -97,7 +101,7 @@ def etl(spark, run_date):
     # Apply the reducer one more time to force any lingering
     # data to get pushed into DynamoDB.
     final_reduction_output = dynamo_reducer(reduction_output,
-                                            (0, 0, []),
+                                            EMPTY_TUPLE,
                                             force_write=True)
     return final_reduction_output
 
